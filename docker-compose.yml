@@ -57,6 +57,52 @@ services:
       options:
         max-size: 100m
 
+  rabbitmq-for-iotagent:
+    image: rabbitmq:3.7-management-alpine
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+    hostname: "rabbitmq_for_iotagent"
+    labels:
+      NAME: "rabbitmq_for_iotagent"
+    ports:
+      - 15672:15672
+      - 5672:5672
+    environment:
+      RABBITMQ_DEFAULT_USER: "test"
+      RABBITMQ_DEFAULT_PASS: "test"
+      RABBITMQ_DEFAULT_VHOST: "rabbitmq_vhost"
+
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    #volumes:
+    #  - ./rabbitmq-isolated.conf:/etc/rabbitmq/rabbitmq.conf
+
+  iotagent-rabbitmq:
+    image: iotagent-rabbitmq
+    depends_on:
+      rabbitmq-iotagent:
+        condition: service_healthy
+    depends_on:
+      - kafka
+      - data-broker
+      - auth
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+    environment:
+      RABBITMQ_DEFAULT_USER: "test"
+      RABBITMQ_DEFAULT_PASS: "test"
+      RABBITMQ_DEFAULT_VHOST: "rabbitmq_vhost"
+
   iotagent-mqtt:
     image: dojot/iotagent-mosca
     depends_on:
@@ -256,6 +302,14 @@ services:
       - flowbroker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:Z
+
+  flowbroker-redis:
+    image: redis:alpine
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
 
   rabbitmq:
     image: rabbitmq:3.7-alpine
